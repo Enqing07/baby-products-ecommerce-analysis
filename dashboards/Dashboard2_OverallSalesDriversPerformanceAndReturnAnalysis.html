@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Overall Sales Drivers, Performance and Return Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="labeler.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            overflow: hidden;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Top Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 40px;
+            background-color: #18044c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            font-weight: bold;
+            z-index: 1001;
+        }
+
+        /* Sidebar  */
+        .left-nav {
+            position: fixed;
+            top: 40px;
+            left: 0;
+            width: 80px;
+            height: calc(100vh - 40px);
+            background-color: #343a40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+            padding-left: 3px;
+            padding-right: 3px;
+            gap: 10px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .left-nav a {
+            color: #ccc;
+            text-decoration: none;
+            width: 80%;
+            padding: 5px;
+            font-size: 10px 6px;
+            ;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .left-nav a i {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .left-nav .nav-label {
+            font-size: 10px;
+            color: #ccc;
+            word-wrap: break-word;
+            white-space: normal;
+            line-height: 1.2;
+            max-width: 60px;
+            display: block;
+        }
+
+        .left-nav a:hover,
+        .left-nav a.active {
+            background-color: #6575ef;
+            color: white;
+        }
+
+        .left-nav a:hover .nav-label,
+        .left-nav a.active .nav-label {
+            color: white;
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: -10px;
+            background: #6575ef;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1002;
+        }
+
+        /* Collapsed Sidebar */
+        .left-nav.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .left-nav.collapsed a {
+            display: none;
+        }
+
+        .left-nav.collapsed .toggle-btn {
+            right: -10px;
+            display: flex;
+        }
+
+
+        /* Sales Channel Filter */
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #6575ef;
+            background-color: white;
+            color: #6575ef;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn.active {
+            background-color: #6575ef;
+            color: white;
+        }
+
+        .filter-column {
+            margin-top: 40px;
+            padding: 20px 10px;
+            background-color: #f8f9fa;
+            width: 100px;
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .channel-filter {
+            margin: 45px 0 0 55px;
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: center;
+        }
+
+
+        /* Main Dashboard Content */
+        .dashboard-container {
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 5px 40px 70px 30px;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-section {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 6px;
+            margin: 4px;
+            width: 48%;
+            height: calc((100vh - 100px) / 2);
+            box-sizing: border-box;
+            overflow: hidden;
+            flex-shrink: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+
+        h2 {
+            font-size: 13px;
+            color: #333;
+            margin: 8px 10px 8px 10px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 6px 10px;
+            font-size: 9px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .tooltip-zoom {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        text.label {
+            font-size: 9px;
+            fill: black;
+        }
+
+        .legend {
+            font-size: 12px;
+        }
+
+        @media screen and (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+                padding: 60px 10px 10px 10px;
+            }
+
+            .dashboard-section {
+                width: 100% !important;
+                margin: 10px 0;
+            }
+
+            .left-nav {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                justify-content: center;
+                padding: 10px 0;
+            }
+
+            .left-nav a {
+                margin: 0 5px;
+            }
+
+            .left-nav .toggle-btn {
+                position: fixed;
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Header Bar -->
+    <header>
+        Overall Sales Drivers, Performance and Return Analysis
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <div class="left-nav collapsed" id="sidebar">
+        <div class="toggle-btn" onclick="toggleSidebar()">&#9776;</div>
+        <a href="Dashboard1_CategoryAndProductLevelPerformanceAnalysis.html">
+            <i class="fas fa-box"></i>
+            <span class="nav-label">Category & Product-Level Analysis</span>
+        </a>
+        <a href="Dashboard2_OverallSalesDriversPerformanceAndReturnAnalysis.html" class="active">
+            <i class="fas fa-dollar-sign"></i>
+            <span class="nav-label">Sales Performance & Return Analysis</span>
+        </a>
+    </div>
+
+    <div class="channel-filter">
+        <button class="filter-btn active" data-channel="All">ALL</button>
+        <button class="filter-btn" data-channel="Point Of Sale">Point Of Sales</button>
+        <button class="filter-btn" data-channel="Online Store">Online Store</button>
+    </div>
+
+    <div class="dashboard-container">
+
+        <div class="dashboard-section">
+            <h2 style="text-align: center;">Top 10 Product Categories by Average Order Value (AOV)</h2>
+            <svg id="aovChart" width="100%"></svg>
+        </div>
+
+        <div class="dashboard-section">
+            <div style="position: relative; width: 100%; height: 100%;">
+                <h2 style="margin-right: 25px; text-align: center;">Top Products Driving Total Sales</h2>
+                <i class="fas fa-expand-arrows-alt" onclick="openParetoZoom()" title="Enlarge Chart"
+                    style="position: absolute; top: 8px; right: 10px; color: #3d3d3d; font-size: 13px; cursor: pointer;"></i>
+
+                <svg id="paretoChart" width="100%" height="100%"></svg>
+            </div>
+        </div>
+
+
+        <div class="dashboard-section">
+            <div style="position: relative; width: 100%; height: 100%;">
+                <h2 style="margin-right: 25px; text-align: center;">Which High Return Products Are Driving Sales?</h2>
+                <i class="fas fa-expand-arrows-alt" onclick="openHighReturnZoom()" title="Enlarge Chart"
+                    style="position: absolute; top: 8px; right: 10px; color: #3d3d3d; font-size: 13px; cursor: pointer;"></i>
+                <svg id="highReturnProductsChart" width="100%" height="100%"></svg>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <div style="position: relative; width: 100%; height: 100%;">
+                <h2 style="margin-right: 25px; text-align: center;">Impact of Discount Strategy on Growth Sale</h2>
+                <i class="fas fa-expand-arrows-alt" onclick="openDiscountZoom()" title="Enlarge Chart"
+                    style="position: absolute; top: 8px; right: 10px; color: #3d3d3d; font-size: 13px; cursor: pointer;"></i>
+                <svg id="discountChart" width="100%" height="100%"></svg>
+            </div>
+        </div>
+
+
+        <div class="dashboard-section">
+            <h2 style="text-align: center;">Impact of Discount Strategy on Growth Sale</h2>
+            <svg id="discountChart" width="100%"></svg>
+
+
+            <div style="margin-top: 10px; font-size: 8px; text-align: center;">
+                <span style="display:inline-block;width:8px;height:8px;background:#f39c12;margin-right:3px;"></span>
+                High Discount + High Sales
+                <span style="display:inline-block;width:8px;height:8px;background:#d35400;margin:0 3px 0 20px;"></span>
+                High Discount + Low Sales
+                <span style="display:inline-block;width:8px;height:8px;background:#95a5a6;margin:0 3px 0 20px;"></span>
+                Low Discount + Low Sales
+                <span style="display:inline-block;width:8px;height:8px;background:#2980b9;margin:0 3px 0 20px;"></span>
+                Low Discount + High Sales
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="paretoModal"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:2000;">
+        <div style="background:white; margin:5% auto; padding:20px; width:80%; height:80%; position:relative;">
+            <span onclick="closeParetoZoom()"
+                style="position:absolute; top:10px; right:20px; cursor:pointer; font-size:20px;">&times;</span>
+            <svg id="paretoChartZoom" width="100%" height="100%"></svg>
+        </div>
+    </div>
+
+    <div id="highReturnModal"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:2000;">
+        <div style="background:white; margin:5% auto; padding:20px; width:80%; height:80%; position:relative;">
+            <span onclick="closeHighReturnZoom()"
+                style="position:absolute; top:10px; right:20px; cursor:pointer; font-size:20px;">&times;</span>
+            <svg id="highReturnProductsChartZoom" width="100%" height="100%"></svg>
+        </div>
+    </div>
+
+    <div id="discountModal"
+        style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.6); z-index:2000;">
+        <div style="background:white; margin:5% auto; padding:20px; width:80%; height:80%; position:relative;">
+            <span onclick="closeDiscountZoom()"
+                style="position:absolute; top:10px; right:20px; cursor:pointer; font-size:20px;">&times;</span>
+            <svg id="discountChartZoom" width="100%" height="100%"></svg>
+        </div>
+    </div>
+
+
+
+
+    <div id="tooltip" class="tooltip" style="position:absolute;opacity:0;"></div>
+    <div id="tooltipZoom" class="tooltip-zoom"></div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById("sidebar");
+            sidebar.classList.toggle("collapsed");
+        }
+    </script>
+
+
+
+
+
+
+
+    <script>
+        const svgAOV = d3.select("#aovChart");
+        const marginAOV = { top: 10, right: 20, bottom: 35, left: 100 };
+        const chartAOV = svgAOV.append("g");
+        const tooltip = d3.select("#tooltip");
+        let selectedChannel = "All";
+
+        function drawAOVChart() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                data = data.filter(d =>
+                    ['Online Store', 'Point Of Sale'].includes(d['Sales channel']) &&
+                    d['Product Category'] !== 'Shipping' &&
+                    +d['Net quantity'] > 0
+                );
+
+                data.forEach(d => d.AOV = +d['Gross sales'] / +d['Net quantity']);
+
+                const grouped = d3.rollup(
+                    data,
+                    v => d3.rollup(v, g => d3.mean(g, d => d.AOV), d => d['Sales channel']),
+                    d => d['Product Category']
+                );
+
+                const dataReady = Array.from(grouped, ([category, values]) => ({
+                    ProductCategory: category,
+                    OnlineStoreAOV: values.get('Online Store') || 0,
+                    POSAOV: values.get('Point Of Sale') || 0
+                }));
+
+                const svgWidth = svgAOV.node().getBoundingClientRect().width;
+                const svgHeight = svgAOV.node().getBoundingClientRect().height;
+                const widthAOV = svgWidth - marginAOV.left - marginAOV.right;
+                const heightAOV = svgHeight - marginAOV.top - marginAOV.bottom;
+
+                chartAOV.selectAll("*").remove();
+                chartAOV.attr("transform", `translate(${marginAOV.left},${marginAOV.top})`);
+
+                const filtered = dataReady
+                    .sort((a, b) => d3.descending(Math.max(a.OnlineStoreAOV, a.POSAOV), Math.max(b.OnlineStoreAOV, b.POSAOV)))
+                    .slice(0, 10);
+
+                const y = d3.scaleBand()
+                    .domain(filtered.map(d => d.ProductCategory))
+                    .range([0, heightAOV])
+                    .padding(0.2);
+
+                const x = d3.scaleLinear()
+                    .domain([0, d3.max(filtered, d => Math.max(d.OnlineStoreAOV, d.POSAOV)) * 1.05])
+                    .nice()
+                    .range([0, widthAOV]);
+
+                const barHeight = y.bandwidth() / 2.5;
+
+                chartAOV.append("g")
+                    .attr("transform", `translate(0,${heightAOV})`)
+                    .call(d3.axisBottom(x).ticks(10).tickFormat(d => `${(d / 1000)}K`))
+                    .selectAll("text").style("font-size", "8px");
+
+                chartAOV.append("text")
+                    .attr("x", widthAOV / 2)
+                    .attr("y", heightAOV + 30)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "9px")
+                    .text("Average Order Value (KSh)");
+
+                chartAOV.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", -90)
+                    .attr("x", -heightAOV / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "9px")
+                    .text("Product Categories");
+
+
+                chartAOV.selectAll(".bar-online")
+                    .data(filtered)
+                    .enter()
+                    .append("rect")
+                    .attr("class", "bar bar-online")
+                    .attr("x", 0)
+                    .attr("y", d => y(d.ProductCategory))
+                    .attr("height", barHeight)
+                    .attr("width", 0)
+                    .attr("fill", "orange")
+                    .on("mouseover", function (event, d) {
+                        d3.select(this)
+                            .transition().duration(100)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 2);
+                        tooltip.style("opacity", 1)
+                            .html(`<strong>${d.ProductCategory}</strong><br>Online Store AOV: ${d.OnlineStoreAOV.toFixed(2)}`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function (event, d) {
+                        d3.select(this)
+                            .transition().duration(100)
+                            .attr("stroke", "none")
+                            .attr("stroke-width", 0);
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition().duration(1000)
+                    .attr("width", d => x(d.OnlineStoreAOV));
+
+                chartAOV.selectAll(".bar-pos")
+                    .data(filtered)
+                    .enter()
+                    .append("rect")
+                    .attr("class", "bar bar-pos")
+                    .attr("x", 0)
+                    .attr("y", d => y(d.ProductCategory) + barHeight)
+                    .attr("height", barHeight)
+                    .attr("width", 0)
+                    .attr("fill", "#b0c4de")
+                    .on("mouseover", function (event, d) {
+                        d3.select(this)
+                            .transition().duration(100)
+                            .attr("stroke", "black")
+                            .attr("stroke-width", 2);
+                        tooltip.style("opacity", 1)
+                            .html(`<strong>${d.ProductCategory}</strong><br>Point Of Sales AOV: ${d.POSAOV.toFixed(2)}`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function (event, d) {
+                        d3.select(this)
+                            .transition().duration(100)
+                            .attr("stroke", "none")
+                            .attr("stroke-width", 0);
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(500)
+                    // .delay((d, i) => i * 70)
+                    // .ease(d3.easeCubicOut)
+                    .attr("width", d => x(d.POSAOV));
+
+                chartAOV.append("g")
+                    .call(d3.axisLeft(y).tickSize(6))
+                    .selectAll("text").style("font-size", "8px");
+
+                const legendGroup = chartAOV.append("g")
+                    .attr("class", "legend-block")
+                    .attr("transform", `translate(${widthAOV - 100}, ${heightAOV - 50})`);
+
+                legendGroup.append("rect")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("width", 8)
+                    .attr("height", 8)
+                    .attr("fill", "orange");
+
+                legendGroup.append("text")
+                    .attr("x", 14)
+                    .attr("y", 4)
+                    .text("Online Store")
+                    .style("font-size", "8px")
+                    .attr("dominant-baseline", "middle");
+
+                legendGroup.append("rect")
+                    .attr("x", 0)
+                    .attr("y", 14)
+                    .attr("width", 8)
+                    .attr("height", 8)
+                    .attr("fill", "#b0c4de");
+
+                legendGroup.append("text")
+                    .attr("x", 14)
+                    .attr("y", 18)
+                    .text("Point Of Sales")
+                    .style("font-size", "8px")
+                    .attr("dominant-baseline", "middle");
+            });
+        }
+
+        // Initial draw
+        drawAOVChart();
+
+        // Redraw on window resize
+        window.addEventListener("resize", drawAOVChart);
+    </script>
+
+
+
+
+
+
+    <script>
+        function drawHighReturnChart() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                const svgEl = d3.select("#highReturnProductsChart");
+                svgEl.selectAll("*").remove();
+
+                const fullWidth = svgEl.node().getBoundingClientRect().width;
+                const fullHeight = svgEl.node().getBoundingClientRect().height;
+
+                const margin = { top: 10, right: 55, bottom: 65, left: 50 },
+                    width = fullWidth - margin.left - margin.right,
+                    height = fullHeight - margin.top - margin.bottom;
+
+                const svg = svgEl.append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const tooltip = d3.select("#tooltip");
+                const productMap = new Map();
+
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                data.forEach(d => {
+                    const product = d['Product type'].trim();
+                    const saleType = d["Sale type"].trim();
+                    const grossSales = +d["Gross sales"];
+                    const returns = +d.Returns;
+
+                    if (!productMap.has(product)) {
+                        productMap.set(product, { product, totalSales: 0, totalReturns: 0 });
+                    }
+
+                    const entry = productMap.get(product);
+                    if (saleType === "Order") {
+                        entry.totalSales += grossSales;
+                    } else if (saleType === "Return") {
+                        entry.totalReturns += Math.abs(returns);
+                    }
+                });
+
+                const dataAgg = Array.from(productMap.values())
+                    .map(d => ({
+                        ...d,
+                        returnRate: d.totalSales > 0 ? d.totalReturns / d.totalSales : 0
+                    }))
+                    .sort((a, b) => b.returnRate - a.returnRate)
+                    .slice(0, 10);
+
+                const x = d3.scaleLinear()
+                    .domain([0, d3.max(dataAgg, d => d.totalSales) * 1.05])
+                    .nice()
+                    .range([0, width]);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(dataAgg, d => d.totalReturns) * 1.1])
+                    .nice()
+                    .range([height, 0]);
+
+                const color = d3.scaleSequential()
+                    .domain(d3.extent(dataAgg, d => d.returnRate))
+                    .interpolator(d3.interpolateOrRd);
+
+                svg.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d => `${d / 1000}K`).ticks(8))
+                    .selectAll("text").style("font-size", "8px");
+
+                svg.append("g")
+                    .call(d3.axisLeft(y).tickFormat(d3.format(",.0f")))
+                    .selectAll("text").style("font-size", "8px");
+
+                svg.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height + 30)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "9px")
+                    .text("Total Gross Sales (KSh)");
+
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -height / 2)
+                    .attr("y", -40)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "9px")
+                    .text("Total Returns");
+
+                // DETERMINISTIC JITTER START 
+                const positionMap = new Map();
+
+                dataAgg.forEach((d, i) => {
+                    const baseX = x(d.totalSales);
+                    const baseY = y(d.totalReturns);
+                    const key = `${baseX},${baseY}`;
+                    if (!positionMap.has(key)) positionMap.set(key, []);
+                    positionMap.get(key).push(i);
+                });
+
+                const jitterRadius = 4;
+                const anchors = [];
+                const labels = [];
+
+                dataAgg.forEach((d, i) => {
+                    const baseX = x(d.totalSales);
+                    const baseY = y(d.totalReturns);
+                    const key = `${baseX},${baseY}`;
+
+                    const siblings = positionMap.get(key).slice().sort((a, b) =>
+                        dataAgg[a].product.localeCompare(dataAgg[b].product)
+                    );
+                    const index = siblings.indexOf(i);
+                    const total = siblings.length;
+
+                    let jitterX = 0, jitterY = 0;
+                    if (total > 1) {
+                        const angle = (2 * Math.PI / total) * index;
+                        jitterX = Math.cos(angle) * jitterRadius;
+                        jitterY = Math.sin(angle) * jitterRadius;
+                    }
+
+                    const jitteredX = baseX + jitterX;
+                    const jitteredY = baseY + jitterY;
+
+                    d.jitteredX = jitteredX;
+                    d.jitteredY = jitteredY;
+
+                    anchors.push({ x: jitteredX, y: jitteredY, r: 6 });
+                    labels.push({
+                        x: jitteredX,
+                        y: jitteredY,
+                        name: d.product,
+                        width: d.product.length * 5,
+                        height: 10
+                    });
+                });
+                // DETERMINISTIC JITTER END
+
+                // Circles
+                svg.selectAll("circle")
+                    .data(dataAgg)
+                    .join("circle")
+                    .attr("cx", d => d.jitteredX)
+                    .attr("cy", d => d.jitteredY)
+                    .attr("r", 6)
+                    .attr("fill", d => color(d.returnRate))
+                    .attr("stroke", "#333")
+                    .attr("fill-opacity", 0.7)
+                    .attr("stroke-width", 0.5)
+                    .style("opacity", 0)
+                    .on("mouseover", function (event, d) {
+                        d3.select(this).raise()
+                            .attr("stroke-width", 2)
+                            .attr("stroke", "#000");
+
+                        tooltip.style("opacity", 1)
+                            .html(`<b>${d.product}</b><br>Sales: ${d.totalSales.toLocaleString()}<br>Returns: ${d.totalReturns.toLocaleString()}<br>Return Rate: ${(d.returnRate * 100).toFixed(2)}%`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this)
+                            .attr("stroke-width", 0.5)
+                            .attr("stroke", "#333");
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 100)
+                    .style("opacity", 1);
+
+                const originalRandom = Math.random;
+
+                Math.random = (function mulberry32(seed) {
+                    return function () {
+                        let t = seed += 0x6D2B79F5;
+                        t = Math.imul(t ^ (t >>> 15), t | 1);
+                        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                    };
+                })(187);
+
+                // Labeler
+                d3.labeler()
+                    .label(labels)
+                    .anchor(anchors)
+                    .width(width)
+                    .height(height)
+                    .start(1000);
+
+                Math.random = originalRandom;
+
+                svg.selectAll("text.label")
+                    .data(labels)
+                    .join("text")
+                    .attr("class", "label")
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y)
+                    .style("opacity", 0)
+                    .text(d => d.name)
+                    .style("font-size", "7px")
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 50)
+                    .style("opacity", 1);
+
+                // Legend
+                const defs = svg.append("defs");
+                const gradient = defs.append("linearGradient")
+                    .attr("id", "legend-gradient")
+                    .attr("x1", "0%").attr("x2", "100%")
+                    .attr("y1", "0%").attr("y2", "0%");
+
+                const [minRate, maxRate] = d3.extent(dataAgg, d => d.returnRate);
+
+                gradient.selectAll("stop")
+                    .data(d3.range(0, 1.01, 0.01))
+                    .enter().append("stop")
+                    .attr("offset", d => `${d * 100}%`)
+                    .attr("stop-color", d => color(minRate + d * (maxRate - minRate)));
+
+                const legendWidth = 70, legendHeight = 8, legendX = width - legendWidth, legendY = height - 30;
+
+                svg.append("text")
+                    .attr("x", legendX)
+                    .attr("y", legendY - 5)
+                    .text("Return Rate")
+                    .style("font-size", "8px");
+
+                svg.append("rect")
+                    .attr("x", legendX)
+                    .attr("y", legendY)
+                    .attr("width", legendWidth)
+                    .attr("height", legendHeight)
+                    .style("fill", "url(#legend-gradient)");
+
+                svg.append("text")
+                    .attr("x", legendX)
+                    .attr("y", legendY + 18)
+                    .text(`${(minRate * 100).toFixed(1)}%`)
+                    .style("font-size", "8px");
+
+                svg.append("text")
+                    .attr("x", legendX + legendWidth)
+                    .attr("y", legendY + 18)
+                    .attr("text-anchor", "end")
+                    .text(`${(maxRate * 100).toFixed(1)}%`)
+                    .style("font-size", "8px");
+            });
+        }
+
+        // Initial draw
+        drawHighReturnChart();
+
+        // Redraw chart when window resizes
+        window.addEventListener("resize", drawHighReturnChart);
+    </script>
+
+    <script>
+        function openHighReturnZoom() {
+            document.getElementById('highReturnModal').style.display = 'block';
+            drawHighReturnChartZoom();
+        }
+
+        function closeHighReturnZoom() {
+            document.getElementById('highReturnModal').style.display = 'none';
+        }
+
+        function drawHighReturnChartZoom() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                const svgEl = d3.select("#highReturnProductsChartZoom");
+                svgEl.selectAll("*").remove();
+
+                const fullWidth = svgEl.node().getBoundingClientRect().width;
+                const fullHeight = svgEl.node().getBoundingClientRect().height;
+
+                const margin = { top: 10, right: 65, bottom: 50, left: 60 },
+                    width = fullWidth - margin.left - margin.right,
+                    height = fullHeight - margin.top - margin.bottom;
+
+                const svg = svgEl.append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const tooltip_zoom = d3.select("#tooltipZoom");
+                const productMap = new Map();
+
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                data.forEach(d => {
+                    const product = d['Product type'].trim();
+                    const saleType = d["Sale type"].trim();
+                    const grossSales = +d["Gross sales"];
+                    const returns = +d.Returns;
+
+                    if (!productMap.has(product)) {
+                        productMap.set(product, { product, totalSales: 0, totalReturns: 0 });
+                    }
+
+                    const entry = productMap.get(product);
+                    if (saleType === "Order") {
+                        entry.totalSales += grossSales;
+                    } else if (saleType === "Return") {
+                        entry.totalReturns += Math.abs(returns);
+                    }
+                });
+
+                const dataAgg = Array.from(productMap.values())
+                    .map(d => ({
+                        ...d,
+                        returnRate: d.totalSales > 0 ? d.totalReturns / d.totalSales : 0
+                    }))
+                    .sort((a, b) => b.returnRate - a.returnRate)
+                    .slice(0, 10);
+
+                const x = d3.scaleLinear()
+                    .domain([0, d3.max(dataAgg, d => d.totalSales) * 1.05])
+                    .nice()
+                    .range([0, width]);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(dataAgg, d => d.totalReturns) * 1.1])
+                    .nice()
+                    .range([height, 0]);
+
+                const color = d3.scaleSequential()
+                    .domain(d3.extent(dataAgg, d => d.returnRate))
+                    .interpolator(d3.interpolateOrRd);
+
+                svg.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d => `${d / 1000}K`).ticks(8));
+
+                svg.append("g")
+                    .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format(",.0f")));
+
+                svg.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height + 40)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "10px")
+                    .text("Total Gross Sales (KSh)");
+
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -height / 2)
+                    .attr("y", -45)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "10px")
+                    .text("Total Returns");
+
+                // JITTER FIX START 
+                const positionMap = new Map();
+
+                // Build a map of base coordinate -> list of indexes
+                dataAgg.forEach((d, i) => {
+                    const baseX = x(d.totalSales);
+                    const baseY = y(d.totalReturns);
+                    const key = `${baseX},${baseY}`;
+
+                    if (!positionMap.has(key)) positionMap.set(key, []);
+                    positionMap.get(key).push(i);
+                });
+
+                const jitterRadius = 5;
+                const anchors = [];
+                const labels = [];
+
+                dataAgg.forEach((d, i) => {
+                    const baseX = x(d.totalSales);
+                    const baseY = y(d.totalReturns);
+                    const key = `${baseX},${baseY}`;
+
+                    // Sort siblings deterministically by product name
+                    const siblings = positionMap.get(key).slice().sort((a, b) =>
+                        dataAgg[a].product.localeCompare(dataAgg[b].product)
+                    );
+                    const index = siblings.indexOf(i);
+                    const total = siblings.length;
+
+                    let jitterX = 0, jitterY = 0;
+                    if (total > 1) {
+                        const angle = (2 * Math.PI / total) * index;
+                        jitterX = Math.cos(angle) * jitterRadius;
+                        jitterY = Math.sin(angle) * jitterRadius;
+                    }
+
+                    const jitteredX = baseX + jitterX;
+                    const jitteredY = baseY + jitterY;
+
+                    d.jitteredX = jitteredX;
+                    d.jitteredY = jitteredY;
+
+                    anchors.push({ x: jitteredX, y: jitteredY, r: 12 });
+
+                    labels.push({
+                        x: jitteredX,
+                        y: jitteredY,
+                        name: d.product,
+                        width: d.product.length * 4,
+                        height: 12
+                    });
+                });
+                // DETERMINISTIC JITTER FIX END 
+
+                // Circles
+                svg.selectAll("circle")
+                    .data(dataAgg)
+                    .join("circle")
+                    .attr("cx", d => d.jitteredX)
+                    .attr("cy", d => d.jitteredY)
+                    .attr("r", 12)
+                    .attr("fill", d => color(d.returnRate))
+                    .attr("fill-opacity", 0.7)
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 0.5)
+                    .style("opacity", 0)
+                    .on("mouseover", function (event, d) {
+                        d3.select(this).raise()
+                            .attr("stroke-width", 2)
+                            .attr("stroke", "#000");
+
+                        tooltip_zoom.style("opacity", 1)
+                            .html(`<b>${d.product}</b><br>Sales: ${d.totalSales.toLocaleString()}<br>Returns: ${d.totalReturns.toLocaleString()}<br>Return Rate: ${(d.returnRate * 100).toFixed(2)}%`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip_zoom.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this)
+                            .attr("stroke-width", 0.5)
+                            .attr("stroke", "#333");
+                        tooltip_zoom.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 100)
+                    .style("opacity", 1);
+
+                // Labeler
+                const originalRandom = Math.random;
+
+                Math.random = (function mulberry32(seed) {
+                    return function () {
+                        let t = seed += 0x6D2B79F5;
+                        t = Math.imul(t ^ (t >>> 15), t | 1);
+                        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                    };
+                })(190);
+
+                Math.random = originalRandom;
+
+
+                d3.labeler()
+                    .label(labels)
+                    .anchor(anchors)
+                    .width(width)
+                    .height(height)
+                    .start(1000);
+
+                svg.selectAll("text.label")
+                    .data(labels)
+                    .join("text")
+                    .attr("class", "label")
+                    .attr("x", d => d.x)
+                    .attr("y", d => d.y)
+                    .style("opacity", 0)
+                    .text(d => d.name)
+                    .style("font-size", "10px")
+                    .transition()
+                    .duration(1000)
+                    .delay((d, i) => i * 50)
+                    .style("opacity", 1);
+
+                // Legend
+                const defs = svg.append("defs");
+                const gradient = defs.append("linearGradient")
+                    .attr("id", "legend-gradient")
+                    .attr("x1", "0%").attr("x2", "100%")
+                    .attr("y1", "0%").attr("y2", "0%");
+
+                const [minRate, maxRate] = d3.extent(dataAgg, d => d.returnRate);
+
+                gradient.selectAll("stop")
+                    .data(d3.range(0, 1.01, 0.01))
+                    .enter().append("stop")
+                    .attr("offset", d => `${d * 100}%`)
+                    .attr("stop-color", d => color(minRate + d * (maxRate - minRate)));
+
+                const legendWidth = 130;
+                const legendHeight = 8;
+                const legendX = width - legendWidth - 10;
+                const legendY = height - 30;
+
+                svg.append("text")
+                    .attr("x", legendX)
+                    .attr("y", legendY - 5)
+                    .text("Return Rate")
+                    .style("font-size", "9px");
+
+                svg.append("rect")
+                    .attr("x", legendX)
+                    .attr("y", legendY)
+                    .attr("width", legendWidth)
+                    .attr("height", legendHeight)
+                    .style("fill", "url(#legend-gradient)");
+
+                svg.append("text")
+                    .attr("x", legendX)
+                    .attr("y", legendY + 18)
+                    .text(`${(minRate * 100).toFixed(1)}%`)
+                    .style("font-size", "9px");
+
+                svg.append("text")
+                    .attr("x", legendX + legendWidth)
+                    .attr("y", legendY + 18)
+                    .attr("text-anchor", "end")
+                    .text(`${(maxRate * 100).toFixed(1)}%`)
+                    .style("font-size", "9px");
+            });
+        }
+    </script>
+
+
+
+
+
+
+
+    <script>
+        function drawDiscountChart() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                const svg = d3.select("#discountChart");
+                svg.selectAll("*").remove(); // Clear on resize
+
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                data.forEach(d => {
+                    d['Gross sales'] = +d['Gross sales'];
+                    d['Discount Rate'] = +d['Discount Rate'];
+                });
+
+                const aggregated = Array.from(
+                    d3.rollup(
+                        data,
+                        v => ({
+                            product: v[0].Product,
+                            grossSales: d3.sum(v, d => d['Gross sales']),
+                            discountRate: d3.sum(v, d => d['Discount Rate'])
+                        }),
+                        d => d.Product
+                    ),
+                    ([, value]) => value
+                );
+
+                const allProduct = aggregated.sort((a, b) => b.grossSales - a.grossSales);
+                const salesThreshold = d3.max(allProduct, d => d.grossSales) * 0.5;
+                const discountThreshold = 0.5;
+
+
+                function getRegionColor(d) {
+                    const isHighSales = d.grossSales > salesThreshold;
+                    const isHighDiscount = d.discountRate > discountThreshold;
+
+                    if (isHighSales && isHighDiscount) return "#f39c12";       // Orange
+                    if (!isHighSales && isHighDiscount) return "#d35400";      // Dark Orange
+                    if (!isHighSales && !isHighDiscount) return "#95a5a6";     // Grey
+                    if (isHighSales && !isHighDiscount) return "#2980b9";      // Blue
+                }
+
+
+                const margin = { top: 10, right: 30, bottom: 70, left: 50 };
+                const svgWidth = svg.node().getBoundingClientRect().width;
+                const svgHeight = svg.node().getBoundingClientRect().height;
+                const width = svgWidth - margin.left - margin.right;
+                const height = svgHeight - margin.top - margin.bottom;
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const x = d3.scaleLinear()
+                    .domain([0, d3.max(allProduct, d => d.grossSales)])
+                    .nice()
+                    .range([0, width]);
+
+                const y = d3.scaleLinear()
+                    .domain([0, 1])
+                    .nice()
+                    .range([height, 0]);
+
+                // Draw vertical line (Sales threshold)
+                g.append("line")
+                    .attr("x1", x(salesThreshold))
+                    .attr("y1", 0)
+                    .attr("x2", x(salesThreshold))
+                    .attr("y2", height)
+                    .attr("stroke", "gray")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "4,2");
+
+                // Draw horizontal line (Discount threshold)
+                g.append("line")
+                    .attr("x1", 0)
+                    .attr("y1", y(discountThreshold))
+                    .attr("x2", width)
+                    .attr("y2", y(discountThreshold))
+                    .attr("stroke", "gray")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "4,2");
+
+                g.append("text")
+                    .attr("x", x(salesThreshold) + 5)
+                    .attr("y", 10)
+                    .text("50%")
+                    .style("font-size", "8px")
+                    .attr("fill", "gray")
+                    .attr("text-anchor", "start");
+
+                g.append("text")
+                    .attr("x", width - 20)
+                    .attr("y", y(discountThreshold) - 5)
+                    .text("50%")
+                    .style("font-size", "8px")
+                    .attr("fill", "gray")
+                    .attr("text-anchor", "start");
+
+
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d => `${(d / 1000)}K`))
+                    .selectAll("text").style("font-size", "8px");
+
+                g.append("g")
+                    .call(d3.axisLeft(y).tickFormat(d => `${(d * 100).toFixed(0)}`))
+                    .selectAll("text").style("font-size", "8px");
+
+                g.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height + 29)
+                    .attr("text-anchor", "middle")
+                    .attr("class", "axis-label")
+                    .style("font-size", "9px")
+                    .text("Total Gross Sales (KSh)");
+
+                g.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -height / 2)
+                    .attr("y", -30)
+                    .attr("text-anchor", "middle")
+                    .attr("class", "axis-label")
+                    .style("font-size", "9px")
+                    .text("Discount Rate (%)");
+
+                const tooltip = d3.select("#tooltip");
+                const color = d3.scaleOrdinal().domain(allProduct.map(d => d.product)).range(d3.schemeCategory10);
+
+                function sanitizeId(str) {
+                    return str.replace(/[^a-zA-Z0-9_-]/g, '_');
+                }
+
+                const dots = g.selectAll("circle")
+                    .data(allProduct)
+                    .join("circle")
+                    .attr("cx", d => x(d.grossSales))
+                    .attr("cy", y(0))
+                    .attr("r", 5)
+                    .attr("fill", d => getRegionColor(d))
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 0.5)
+                    .style("opacity", 0)
+                    .on("mouseover", function (event, d) {
+                        d3.select(this)
+                            .attr("stroke", "#000")
+                            .attr("stroke-width", 2);
+
+                        tooltip.style("opacity", 1)
+                            .html(`<b>${d.product}</b><br>Sales: ${d.grossSales.toLocaleString()}<br>Discount: ${(d.discountRate * 100).toFixed(0)}%`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this)
+                            .attr("stroke", "#333")
+                            .attr("stroke-width", 0.5);
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .style("opacity", 1)
+                    .attr("cy", d => y(d.discountRate))
+                    .attr("r", 5);
+
+                function wrapText(text, maxWordsPerLine = 3) {
+                    const words = text.trim().split(/\s+/);
+                    const lines = [];
+
+                    for (let i = 0; i < words.length; i += maxWordsPerLine) {
+                        lines.push(words.slice(i, i + maxWordsPerLine).join(" "));
+                    }
+
+                    return lines;
+                }
+
+
+                const labelOffset = 7;
+
+                function computeYOffset(d, i) {
+                    const baseOffset = y(d.discountRate) - labelOffset - 10;
+                    if (x(d.grossSales) < 300) {
+                        return baseOffset - (i % 2 === 0 ? 8 : -8);
+                    }
+                    return baseOffset;
+                }
+
+                // g.selectAll(".label")
+                //     .data(allProduct.filter(d => {
+                //         const isHighSales = d.grossSales > salesThreshold;
+                //         const isHighDiscount = d.discountRate > discountThreshold;
+                //         return isHighDiscount;
+                //     }))
+
+                //     .enter()
+                //     .append("text")
+                //     .attr("class", "label")
+                //     .attr("x", d => x(d.grossSales) + labelOffset)
+                //     .attr("y", d => y(d.discountRate) - labelOffset - 10)
+                //     .style("font-size", "7px")
+                //     .style("fill", "black")
+                //     .selectAll("tspan")
+                //     .data(d => wrapText(d.product, 12).map((line, i, lines) => ({ line, i, total: lines.length, d })))
+                //     .join("tspan")
+                //     .text(d => d.line)
+                //     .attr("x", d => x(d.d.grossSales) + labelOffset)
+                //     .attr("y", d => computeYOffset(d.d, d.i) + d.i * 9)
+                //     .attr("dy", "0.71em")
+                //     .attr("text-anchor", "start");
+
+                setTimeout(() => {
+                    const labelGroups = g.selectAll(".label")
+                        .data(allProduct.filter(d => {
+                            const isHighSales = d.grossSales > salesThreshold;
+                            const isHighDiscount = d.discountRate > discountThreshold;
+                            return isHighDiscount;
+                        }))
+                        .enter()
+                        .append("text")
+                        .attr("class", "label")
+                        .style("opacity", 0) // start transparent
+                        .attr("x", d => x(d.grossSales) + labelOffset)
+                        .attr("y", d => y(d.discountRate) - labelOffset - 10)
+                        .style("font-size", "7px")
+                        .style("fill", "black");
+
+                    labelGroups.selectAll("tspan")
+                        .data(d => wrapText(d.product, 12).map((line, i, lines) => ({ line, i, total: lines.length, d })))
+                        .join("tspan")
+                        .text(d => d.line)
+                        .attr("x", d => x(d.d.grossSales) + labelOffset)
+                        .attr("y", d => computeYOffset(d.d, d.i) + d.i * 9)
+                        .attr("dy", "0.71em")
+                        .attr("text-anchor", "start");
+
+                    labelGroups.transition()
+                        .duration(600)
+                        .style("opacity", 1);
+                }, 1000);
+
+
+            });
+        }
+
+        // Initial draw
+        drawDiscountChart();
+
+        // Redraw on window resize
+        window.addEventListener("resize", drawDiscountChart);
+    </script>
+
+    <script>
+        function openDiscountZoom() {
+            document.getElementById('discountModal').style.display = 'flex';
+            setTimeout(() => {
+                drawDiscountChartZoom();
+            }, 10);
+        }
+
+        function closeDiscountZoom() {
+            document.getElementById('discountModal').style.display = 'none';
+        }
+
+        function drawDiscountChartZoom() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                const svg = d3.select("#discountChartZoom");
+                svg.selectAll("*").remove();
+
+                svg
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("viewBox", `0 0 960 500`)
+                    .attr("preserveAspectRatio", "xMidYMid meet");
+
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                data.forEach(d => {
+                    d['Gross sales'] = +d['Gross sales'];
+                    d['Discount Rate'] = +d['Discount Rate'];
+                });
+
+                const aggregated = Array.from(
+                    d3.rollup(
+                        data,
+                        v => ({
+                            product: v[0].Product,
+                            grossSales: d3.sum(v, d => d['Gross sales']),
+                            discountRate: d3.sum(v, d => d['Discount Rate'])
+                        }),
+                        d => d.Product
+                    ),
+                    ([, value]) => value
+                );
+
+                const allProduct = aggregated.sort((a, b) => b.grossSales - a.grossSales);
+                const salesThreshold = d3.max(allProduct, d => d.grossSales) * 0.5;
+                const discountThreshold = 0.5;
+
+                function getRegionColor(d) {
+                    const isHighSales = d.grossSales > salesThreshold;
+                    const isHighDiscount = d.discountRate > discountThreshold;
+                    if (isHighSales && isHighDiscount) return "#f39c12";
+                    if (!isHighSales && isHighDiscount) return "#d35400";
+                    if (!isHighSales && !isHighDiscount) return "#95a5a6";
+                    if (isHighSales && !isHighDiscount) return "#2980b9";
+                }
+
+                const margin = { top: 40, right: 50, bottom: 50, left: 65 };
+                const width = 960 - margin.left - margin.right;
+                const height = 500 - margin.top - margin.bottom;
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const x = d3.scaleLinear()
+                    .domain([0, d3.max(allProduct, d => d.grossSales)])
+                    .nice()
+                    .range([0, width]);
+
+                const y = d3.scaleLinear()
+                    .domain([0, 1])
+                    .nice()
+                    .range([height, 0]);
+
+                g.append("line")
+                    .attr("x1", x(salesThreshold))
+                    .attr("y1", 0)
+                    .attr("x2", x(salesThreshold))
+                    .attr("y2", height)
+                    .attr("stroke", "gray")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "4,2");
+
+                g.append("line")
+                    .attr("x1", 0)
+                    .attr("y1", y(discountThreshold))
+                    .attr("x2", width)
+                    .attr("y2", y(discountThreshold))
+                    .attr("stroke", "gray")
+                    .attr("stroke-width", 1)
+                    .attr("stroke-dasharray", "4,2");
+
+                g.append("text")
+                    .attr("x", x(salesThreshold) + 5)
+                    .attr("y", 10)
+                    .text("50%")
+                    .style("font-size", "9px")
+                    .attr("fill", "gray");
+
+                g.append("text")
+                    .attr("x", width - 20)
+                    .attr("y", y(discountThreshold) - 5)
+                    .text("50%")
+                    .style("font-size", "9px")
+                    .attr("fill", "gray");
+
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d3.format(".1~s")))
+                    .selectAll("text").style("font-size", "9px");
+
+                g.append("g")
+                    .call(d3.axisLeft(y).tickFormat(d => `${(d * 100).toFixed(0)}%`))
+                    .selectAll("text").style("font-size", "9px");
+
+                svg.append("text")
+                    .attr("x", margin.left + width / 2)
+                    .attr("y", height + margin.top + 30)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "11px")
+                    .text("Gross Sales (KSh)");
+
+                svg.append("text")
+                    .attr("transform", `translate(15, ${margin.top + height / 2}) rotate(-90)`)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "11px")
+                    .text("Discount Rate (%)");
+
+                const tooltip = d3.select("#tooltip");
+
+                g.selectAll("circle")
+                    .data(allProduct)
+                    .join("circle")
+                    .attr("cx", d => x(d.grossSales))
+                    .attr("cy", y(0))
+                    .attr("r", 8)
+                    .attr("fill", d => getRegionColor(d))
+                    .attr("stroke", "#333")
+                    .attr("stroke-width", 0.5)
+                    .style("opacity", 0)
+                    .on("mouseover", function (event, d) {
+                        d3.select(this).attr("stroke", "#000").attr("stroke-width", 2);
+                        tooltip.style("opacity", 1)
+                            .html(`<b>${d.product}</b><br>Sales: ${d.grossSales.toLocaleString()}<br>Discount: ${(d.discountRate * 100).toFixed(0)}%`);
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this).attr("stroke", "#333").attr("stroke-width", 0.5);
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .style("opacity", 1)
+                    .attr("cy", d => y(d.discountRate));
+
+                const labelOffset = 7;
+                function computeYOffset(d, i) {
+                    const baseOffset = y(d.discountRate) - labelOffset - 10;
+                    if (x(d.grossSales) < 300) {
+                        return baseOffset - (i % 2 === 0 ? 8 : -8);
+                    }
+                    return baseOffset;
+                }
+
+                function wrapText(text, maxWordsPerLine = 3) {
+                    const words = text.trim().split(/\s+/);
+                    const lines = [];
+                    for (let i = 0; i < words.length; i += maxWordsPerLine) {
+                        lines.push(words.slice(i, i + maxWordsPerLine).join(" "));
+                    }
+                    return lines;
+                }
+
+                setTimeout(() => {
+                    const labelGroups = g.selectAll(".label")
+                        .data(allProduct.filter(d => {
+                            const isHighSales = d.grossSales > salesThreshold;
+                            const isHighDiscount = d.discountRate > discountThreshold;
+                            return isHighDiscount;
+                        }))
+                        .enter()
+                        .append("text")
+                        .attr("class", "label")
+                        .style("opacity", 0) // start transparent
+                        .attr("x", d => x(d.grossSales) + labelOffset)
+                        .attr("y", d => y(d.discountRate) - labelOffset - 10)
+                        .style("font-size", "10px")
+                        .style("fill", "black");
+
+                    labelGroups.selectAll("tspan")
+                        .data(d => wrapText(d.product, 12).map((line, i, lines) => ({ line, i, total: lines.length, d })))
+                        .join("tspan")
+                        .text(d => d.line)
+                        .attr("x", d => x(d.d.grossSales) + labelOffset)
+                        .attr("y", d => computeYOffset(d.d, d.i) + d.i * 9)
+                        .attr("dy", "0.71em")
+                        .attr("text-anchor", "start");
+
+                    labelGroups.transition()
+                        .duration(600)
+                        .style("opacity", 1);
+                }, 1000);
+            });
+        }
+
+
+    </script>
+
+
+
+
+
+
+    <script>
+        function drawParetoChart() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                data = data.filter(d =>
+                    selectedChannel === "All" || d["Sales channel"] === selectedChannel
+                );
+
+                const svg = d3.select("#paretoChart");
+                svg.selectAll("*").remove();
+
+                const margin = { top: 10, right: 50, bottom: 70, left: 50 };
+                const fullWidth = svg.node().getBoundingClientRect().width || 600;
+                const fullHeight = svg.node().getBoundingClientRect().height || 400;
+                const width = fullWidth - margin.left - margin.right;
+                const height = fullHeight - margin.top - margin.bottom;
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+                const tooltip = d3.select("#tooltip");
+
+                const salesByProduct = Array.from(
+                    d3.rollup(data, v => d3.sum(v, d => +d["Total sales"]), d => d["Product"]),
+                    ([Product, TotalSales]) => ({ Product, TotalSales })
+                ).sort((a, b) => d3.descending(a.TotalSales, b.TotalSales));
+
+                const total = d3.sum(salesByProduct, d => d.TotalSales);
+                let cumulative = 0;
+                salesByProduct.forEach((d, i) => {
+                    cumulative += d.TotalSales;
+                    d.Cumulative = cumulative / total;
+                    d.PercentOfProducts = (i + 1) / salesByProduct.length;
+                });
+
+                const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+                const yLeft = d3.scaleLinear().domain([0, 1]).range([height, 0]);
+                const yRight = d3.scaleLinear().domain([0, d3.max(salesByProduct, d => d.TotalSales)]).range([height, 0]);
+
+                // Bars
+                g.selectAll("rect")
+                    .data(salesByProduct)
+                    .join("rect")
+                    .attr("x", d => x(d.PercentOfProducts - 1 / salesByProduct.length))
+                    .attr("y", height)
+                    .attr("width", x(1 / salesByProduct.length) - x(0))
+                    .attr("height", 0)
+                    .attr("fill", "#f39c12")
+                    .on("mouseover", function (event, d) {
+                        d3.select(this).attr("stroke", "#c0392b").attr("stroke-width", 2);
+                        tooltip.style("opacity", 1).html(
+                            `<strong>${d.Product}</strong><br>Total Sales: ${d3.format(",")(d.TotalSales)}<br>Cumulative: ${(d.Cumulative * 100).toFixed(2)}%`
+                        );
+                    })
+                    .on("mousemove", function (event) {
+                        tooltip
+                            .style("left", event.pageX + 10 + "px")
+                            .style("top", event.pageY - 30 + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this).attr("stroke", "none");
+                        tooltip.style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .attr("y", d => yRight(d.TotalSales))
+                    .attr("height", d => yRight(0) - yRight(d.TotalSales));
+
+                // Pareto line
+                const paretoLine = d3.line()
+                    .x(d => x(d.PercentOfProducts))
+                    .y(d => yLeft(d.Cumulative));
+
+                g.append("path")
+                    .datum(salesByProduct)
+                    .attr("fill", "none")
+                    .attr("stroke", "steelblue")
+                    .attr("stroke-width", 2)
+                    .attr("d", paretoLine)
+                    .attr("stroke-dasharray", function () {
+                        return this.getTotalLength();
+                    })
+                    .attr("stroke-dashoffset", function () {
+                        return this.getTotalLength();
+                    })
+                    .transition()
+                    .duration(1000)
+                    .ease(d3.easeLinear)
+                    .attr("stroke-dashoffset", 0);
+
+                // Axes
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d => `${(d * 100).toFixed(0)}%`))
+                    .selectAll("text").style("font-size", "8px");
+
+                g.append("g")
+                    .call(d3.axisLeft(yLeft).tickFormat(d => `${(d * 100).toFixed(0)}%`))
+                    .selectAll("text").style("font-size", "8px");
+
+                g.append("g")
+                    .attr("transform", `translate(${width},0)`)
+                    .call(d3.axisRight(yRight).tickFormat(d3.format(".2s")))
+                    .selectAll("text").style("font-size", "8px");
+
+                // 80/20 guide lines
+                g.append("line")
+                    .attr("x1", x(0.2)).attr("x2", x(0.2))
+                    .attr("y1", yLeft(0)).attr("y2", yLeft(1))
+                    .attr("stroke", "gray").attr("stroke-width", 1.5).attr("stroke-dasharray", "4,2");
+
+                g.append("line")
+                    .attr("x1", x(0)).attr("x2", x(1))
+                    .attr("y1", yLeft(0.8)).attr("y2", yLeft(0.8))
+                    .attr("stroke", "gray").attr("stroke-width", 1.5).attr("stroke-dasharray", "4,2");
+
+                g.append("text").attr("x", x(0.22)).attr("y", yLeft(0.78) - 5).text("80%").style("font-size", "9px");
+                g.append("text").attr("x", x(0.175) - 10).attr("y", yLeft(0.05)).text("20%").style("font-size", "9px");
+
+                // Axis Labels
+                svg.append("text")
+                    .attr("x", margin.left + width / 2)
+                    .attr("y", height + margin.top + 30)
+                    .attr("text-anchor", "middle")
+                    .text("Cumulative % of Products")
+                    .style("font-size", "9px");
+
+                svg.append("text")
+                    .attr("transform", `translate(15, ${margin.top + height / 2}) rotate(-90)`)
+                    .attr("text-anchor", "middle")
+                    .text("Cumulative % of Total Sales")
+                    .style("font-size", "9px");
+
+                svg.append("text")
+                    .attr("transform", `translate(${margin.left + width + 40}, ${margin.top + height / 2}) rotate(-90)`)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "9px")
+                    .text("Total Sales (KSh)");
+
+                // Top 5 Products
+                const top5 = salesByProduct.slice(0, 5);
+                const labelGroup = g.append("g")
+                    .attr("transform", `translate(${width - 270}, ${margin.top + 65})`);
+
+                labelGroup.append("text")
+                    .text("Top 5 Products:")
+                    .style("font-size", "9px")
+                    .style("font-weight", "bold");
+
+                top5.forEach((d, i) => {
+                    labelGroup.append("text")
+                        .attr("y", 12 * (i + 1))
+                        .text(`${i + 1}. ${d.Product}`)
+                        .style("font-size", "8px");
+                });
+            });
+        }
+
+        // Initial draw
+        drawParetoChart();
+
+        // Redraw on resize
+        window.addEventListener("resize", drawParetoChart);
+
+        // Filter button listener
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                selectedChannel = btn.getAttribute("data-channel");
+                redrawAllCharts();
+            });
+        });
+
+        function redrawAllCharts() {
+            drawAOVChart();
+            drawHighReturnChart();
+            drawDiscountChart();
+            drawParetoChart();
+        }
+    </script>
+
+
+    <script>
+        function openParetoZoom() {
+            document.getElementById('paretoModal').style.display = 'block';
+            drawParetoChartZoom();
+        }
+
+        function closeParetoZoom() {
+            document.getElementById('paretoModal').style.display = 'none';
+        }
+
+        // Copy of drawParetoChart, but targets #paretoChartZoom
+        function drawParetoChartZoom() {
+            d3.csv("dataset/ecommerce_sales_data_cleaned.csv").then(data => {
+                data = data.filter(d => selectedChannel === "All" || d["Sales channel"] === selectedChannel);
+
+                const svg = d3.select("#paretoChartZoom");
+                svg.selectAll("*").remove();
+
+                const margin = { top: 30, right: 80, bottom: 50, left: 60 },
+                    width = svg.node().getBoundingClientRect().width - margin.left - margin.right,
+                    height = svg.node().getBoundingClientRect().height - margin.top - margin.bottom;
+
+                const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const salesByProduct = Array.from(
+                    d3.rollup(data, v => d3.sum(v, d => +d["Total sales"]), d => d["Product"]),
+                    ([Product, TotalSales]) => ({ Product, TotalSales })
+                );
+
+                salesByProduct.sort((a, b) => d3.descending(a.TotalSales, b.TotalSales));
+
+                const total = d3.sum(salesByProduct, d => d.TotalSales);
+                let cumulative = 0;
+                salesByProduct.forEach((d, i) => {
+                    cumulative += d.TotalSales;
+                    d.Cumulative = cumulative / total;
+                    d.PercentOfProducts = (i + 1) / salesByProduct.length;
+                });
+
+                const x = d3.scaleLinear().domain([0, 1]).range([0, width]);
+                const yLeft = d3.scaleLinear().domain([0, 1]).range([height, 0]);
+                const yRight = d3.scaleLinear().domain([0, d3.max(salesByProduct, d => d.TotalSales)]).range([height, 0]);
+
+                g.selectAll("rect")
+                    .data(salesByProduct)
+                    .join("rect")
+                    .attr("x", d => x(d.PercentOfProducts - 1 / salesByProduct.length))
+                    // .attr("y", d => yRight(d.TotalSales))
+                    .attr("y", yRight(0))
+                    .attr("width", x(1 / salesByProduct.length) - x(0))
+                    // .attr("height", d => yRight(0) - yRight(d.TotalSales))
+                    .attr("height", 0)
+                    .attr("fill", "#f39c12")
+                    .on("mouseover", function (event, d) {
+                        d3.select(this)
+                            .attr("stroke", "#c0392b")
+                            .attr("stroke-width", 2);
+                        d3.select("#tooltipZoom")
+                            .style("opacity", 1)
+                            .html(`<strong>${d.Product}</strong><br>Total Sales: ${d3.format(",")(d.TotalSales)}<br>Cumulative: ${(d.Cumulative * 100).toFixed(2)}%`);
+                    })
+                    .on("mousemove", function (event) {
+                        d3.select("#tooltipZoom")
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 30) + "px");
+                    })
+                    .on("mouseout", function () {
+                        d3.select(this)
+                            .attr("stroke", "none")
+                            .attr("stroke-width", 0);
+                        d3.select("#tooltipZoom").style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .attr("y", d => yRight(d.TotalSales))
+                    .attr("height", d => yRight(0) - yRight(d.TotalSales));
+
+
+                const paretoLine = d3.line()
+                    .x(d => x(d.PercentOfProducts))
+                    .y(d => yLeft(d.Cumulative));
+
+                g.append("path")
+                    .datum(salesByProduct)
+                    .attr("fill", "none")
+                    .attr("stroke", "steelblue")
+                    .attr("stroke-width", 2)
+                    .attr("d", paretoLine)
+                    .attr("stroke-dasharray", function () {
+                        return this.getTotalLength();
+                    })
+                    .attr("stroke-dashoffset", function () {
+                        return this.getTotalLength();
+                    })
+                    .transition()
+                    .duration(1000)
+                    .ease(d3.easeLinear)
+                    .attr("stroke-dashoffset", 0);
+
+
+                g.append("g")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x).tickFormat(d => (d * 100).toFixed(0)));
+
+                g.append("g")
+                    .call(d3.axisLeft(yLeft).tickFormat(d => (d * 100).toFixed(0)));
+
+                g.append("g")
+                    .attr("transform", `translate(${width},0)`)
+                    .call(d3.axisRight(yRight).tickFormat(d3.format(".2s")));
+
+                g.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height + 35)
+                    .attr("text-anchor", "middle")
+                    .text("Cumulative % of Products")
+                    .style("font-size", "10px");
+
+                svg.append("text")
+                    .attr("transform", `translate(${margin.left - 40}, ${margin.top + height / 2}) rotate(-90)`)
+                    .attr("text-anchor", "middle")
+                    .text("Cumulative % of Total Sales")
+                    .style("font-size", "10px");
+
+                svg.append("text")
+                    .attr("transform", `translate(${margin.left + width + 50}, ${margin.top + height / 2}) rotate(-90)`)
+                    .attr("text-anchor", "middle")
+                    .text("Total Sales (KSh)").style("font-size", "10px");
+
+                // Guideline lines
+                g.append("line")
+                    .attr("x1", x(0.2)).attr("x2", x(0.2))
+                    .attr("y1", yLeft(0)).attr("y2", yLeft(1))
+                    .attr("stroke", "gray").attr("stroke-width", 1.5).attr("stroke-dasharray", "4,2");
+
+                g.append("line")
+                    .attr("x1", x(0)).attr("x2", x(1))
+                    .attr("y1", yLeft(0.8)).attr("y2", yLeft(0.8))
+                    .attr("stroke", "gray").attr("stroke-width", 1.5).attr("stroke-dasharray", "4,2");
+
+                // Labels
+                g.append("text")
+                    .attr("x", x(0.22)).attr("y", yLeft(0.8) - 5)
+                    .text("80%")
+                    .style("font-size", "12px");
+
+                g.append("text")
+                    .attr("x", x(0.14) - 10).attr("y", yLeft(0.05))
+                    .text("20%")
+                    .style("font-size", "12px");
+
+                // Top 5 Products block
+                const top5 = salesByProduct.slice(0, 5);
+                const labelGroup = g.append("g")
+                    .attr("transform", `translate(${width - 400}, ${margin.top + 220})`);
+
+                labelGroup.append("text")
+                    .text("Top 5 Products:")
+                    .style("font-size", "11px")
+                    .style("font-weight", "bold");
+
+                top5.forEach((d, i) => {
+                    labelGroup.append("text")
+                        .attr("y", 12 * (i + 1))
+                        .text(`${i + 1}. ${d.Product}`)
+                        .style("font-size", "10px");
+                });
+
+            });
+        }
+    </script>
+
+
+
+</body>
+
+</html>
