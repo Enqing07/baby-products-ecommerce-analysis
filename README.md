@@ -2,7 +2,7 @@
 
 An interactive data visualization dashboard built with **D3.js** that analyzes three years of real-world e-commerce transaction data from a Kenyan baby products retailer. The project transforms 28,755 raw sales records into actionable business insights across two interconnected dashboards.
 
-**Live Demo:** [View Dashboard]
+**Live Demo:** [View Dashboard](https://enqing07.github.io/baby-products-ecommerce-analysis/)
 
 **Documentation:** [Full Report](https://github.com/Enqing07/baby-products-ecommerce-analysis/blob/fb6db056a008023cd80a5cec4ac8b426f09d0c71/Report.pdf) (Covers the full analytical workflow from data preparation to visualization, with detailed explanations of each step and clear interpretations of the insights derived from every chart.)
 
