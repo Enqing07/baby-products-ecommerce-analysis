@@ -4,7 +4,8 @@ An interactive data visualization dashboard built with **D3.js** that analyzes t
 
 **Live Demo:** [View Dashboard](https://enqing07.github.io/baby-products-ecommerce-analysis/)
 
-**Documentation:** [Full Report](https://github.com/Enqing07/baby-products-ecommerce-analysis/blob/fb6db056a008023cd80a5cec4ac8b426f09d0c71/Report.pdf) (Covers the full analytical workflow from data preparation to visualization, with detailed explanations of each step and clear interpretations of the insights derived from every chart.)
+**Documentation:** [Full Report](https://enqing07.github.io/baby-products-ecommerce-analysis/Report.pdf) 
+(Covers the full analytical workflow from data preparation to visualization, with detailed explanations of each step and clear interpretations of the insights derived from every chart.)
 
 ---
 
