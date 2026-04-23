@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Category and Product-Level Performance Analysis</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        header {
+            background-color: #18044c;
+            color: #fff;
+            padding: 5px 20px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            height: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-container {
+            height: calc(100vh - 60px);
+            display: flex;
+            padding: 5px;
+            gap: 5px;
+            overflow: hidden;
+        }
+
+        .left-column,
+        .right-column {
+            flex: 1 1 48%;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            height: 100%;
+        }
+
+        .dashboard-section {
+            background: white;
+            padding: 6px 10px;
+            margin: 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .dashboard-section h2 {
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+
+        .kpi {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2px 0;
+            font-size: 10px;
+            line-height: 1.2;
+        }
+
+        .kpi .icon {
+            font-size: 24px;
+        }
+
+        .kpi .value {
+            font-size: 16px;
+            margin: 2px 0;
+        }
+
+        .kpi .label {
+            font-size: 11px;
+        }
+
+        #kpiContainer {
+            display: flex;
+            justify-content: space-between;
+            gap: 0;
+            height: 50px;
+        }
+
+        .kpi {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 0 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .kpi:first-child {
+            margin-left: 0;
+        }
+
+        .kpi:last-child {
+            margin-right: 0;
+        }
+
+
+        #kpiContainer {
+            display: flex;
+            justify-content: space-between;
+            gap: 5px;
+            height: 80px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        @media screen and (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+            }
+
+            .left-column,
+            .right-column {
+                flex: 1 1 100%;
+            }
+        }
+
+        .brush .handle {
+            transition: none !important;
+            pointer-events: all;
+            width: 10px !important;
+            height: 20px !important;
+            rx: 3px;
+            fill: #fff;
+            stroke: #333;
+            stroke-width: 1.5px;
+            cursor: ew-resize;
+            y: 1px !important;
+            transform: translateY(0px) !important;
+        }
+
+        .brush .handle:focus,
+        .brush .handle:active {
+            outline: none;
+            width: 10px !important;
+            height: 20px !important;
+        }
+
+
+        /* Sidebar  */
+        .left-nav {
+            position: fixed;
+            top: 50px;
+            left: 0;
+            width: 80px;
+            height: calc(100vh - 40px);
+            background-color: #343a40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+            padding-left: 3px;
+            padding-right: 3px;
+            gap: 10px;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .left-nav a {
+            color: #ccc;
+            text-decoration: none;
+            width: 80%;
+            padding: 5px;
+            font-size: 10px 6px;
+            ;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: background 0.2s, color 0.2s;
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .left-nav a i {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .left-nav .nav-label {
+            font-size: 10px;
+            color: #ccc;
+            word-wrap: break-word;
+            white-space: normal;
+            line-height: 1.2;
+            max-width: 60px;
+            display: block;
+        }
+
+        .left-nav a:hover,
+        .left-nav a.active {
+            background-color: #6575ef;
+            color: white;
+        }
+
+        .left-nav a:hover .nav-label,
+        .left-nav a.active .nav-label {
+            color: white;
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: -10px;
+            background: #6575ef;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1002;
+        }
+
+        /* Collapsed Sidebar */
+        .left-nav.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .left-nav.collapsed a {
+            display: none;
+        }
+
+        .left-nav.collapsed .toggle-btn {
+            right: -10px;
+            display: flex;
+        }
+
+        #categoryModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 90vw;
+            width: 960px;
+            max-height: 90vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tooltip" id="tooltip"></div>
+
+    <header>
+        <h2>Category and Product-Level Performance Analysis</h2>
+        <div style="display: flex; gap: 5px; align-items: center;">
+            <label for="yearSlider">Year</label>
+            <svg id="yearSlider" width="250" height="40"></svg>
+            <label for="channelSelect">Sales Channel</label>
+            <select id="channelSelect">
+                <option value="All">All</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <div class="left-nav collapsed" id="sidebar">
+        <div class="toggle-btn" onclick="toggleSidebar()">&#9776;</div>
+        <a href="Dashboard1_CategoryAndProductLevelPerformanceAnalysis.html" class="active">
+            <i class="fas fa-box"></i>
+            <span class="nav-label">Category & Product-Level Performance Analysis</span>
+        </a>
+        <a href="Dashboard2_OverallSalesDriversPerformanceAndReturnAnalysis.html">
+            <i class="fas fa-dollar-sign"></i>
+            <span class="nav-label">Sales Performance & Return Analysis</span>
+        </a>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- LEFT COLUMN -->
+        <div class="left-column">
+            <div class="dashboard-section" style="flex: 1;">
+                <!-- <h2>KPI Summary</h2> -->
+                <h2 style="text-align: center;">KPI Summary</h2>
+                <div id="kpiContainer">
+                    <div class="kpi" style="flex: 1; border-top: 4px solid #fdcc0b;">
+                        <div class="icon"><i class="fas fa-dollar-sign"></i></div>
+                        <div class="value" id="totalSales">0</div>
+                        <div class="label">Total Sales (KSh)</div>
+                    </div>
+                    <div class="kpi" style="flex: 1; border-top: 4px solid #de5252 ;">
+                        <div class="icon"><i class="fas fa-undo"></i></div>
+                        <div class="value" id="returnCount">0</div>
+                        <div class="label"># of Return Orders</div>
+                    </div>
+                    <div class="kpi" style="flex: 1; border-top: 4px solid #c49ad1 ;">
+                        <div class="icon"><i class="fas fa-box"></i></div>
+                        <div class="value" id="orders">0</div>
+                        <div class="label"># of Orders</div>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-section" style="flex: 2;">
+                <!-- <h2>Gross Sales Trend Over Time</h2> -->
+                <h2 style="text-align: center; margin-top: 3px">Gross Sales Trend Over Time</h2>
+                <svg id="lineChart"></svg>
+            </div>
+            <div class="dashboard-section" style="flex: 2;">
+                <!-- <h2>Peak Shopping Times</h2> -->
+                <h2 style="text-align: center; margin-top: 4px">Peak Shopping Times</h2>
+                <svg id="heatmapChart"></svg>
+            </div>
+        </div>
+
+
+        <!-- RIGHT COLUMN -->
+        <div class="right-column">
+            <div class="dashboard-section">
+                <!-- <h2>Top 10 Selling Products</h2>-->
+                <h2 style="text-align: center; margin-top: 2px">Top 10 Selling Products</h2>
+                <svg id="productBarChart" width="100%" height="100%"></svg>
+            </div>
+            <div class="dashboard-section">
+                <div style="position: relative; width: 100%; height: 100%;">
+                    <h2 style="text-align: center; margin-top: 3px">Top Selling Product Categories</h2>
+                    <i class="fas fa-expand-arrows-alt" onclick="openCategoryZoom()" title="Enlarge Chart"
+                        style="position: absolute; top: 8px; right: 10px; color: #3d3d3d; font-size: 13px; cursor: pointer;"></i>
+
+                    <svg id="categoryChart" width="100%" height="100%"></svg>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById("sidebar");
+            sidebar.classList.toggle("collapsed");
+        }
+    </script>
+
+
+
+    <script>
+        // Global filter states
+        let selectedStartYear;
+        let selectedEndYear;
+        let selectedQuarter = null;
+        let selectedCategory = null;
+        let selectedChannel = "All";
+
+        // Global filtered data source
+        window.globalData = [];
+
+        // Master filter + redraw
+        function updateAll() {
+            let filteredForLine = window.globalData;
+            let filteredForDetails = window.globalData;
+
+            // Year and Sales Channel filter for both line and details
+            filteredForLine = filteredForLine.filter(d =>
+                d.Year >= selectedStartYear &&
+                d.Year <= selectedEndYear &&
+                (selectedChannel === "All" || d["Sales channel"] === selectedChannel)
+            );
+
+            filteredForDetails = filteredForDetails.filter(d =>
+                d.Year >= selectedStartYear &&
+                d.Year <= selectedEndYear &&
+                (selectedChannel === "All" || d["Sales channel"] === selectedChannel)
+            );
+
+            // Filter by selectedQuarter
+            if (selectedQuarter) {
+                filteredForDetails = filteredForDetails.filter(d => d.QuarterStr === selectedQuarter);
+            }
+
+            // Filter by selectedCategory
+            if (selectedCategory) {
+                filteredForDetails = filteredForDetails.filter(d => d["Product Category"] === selectedCategory);
+                filteredForLine = filteredForLine.filter(d => d["Product Category"] === selectedCategory);
+            }
+
+            let filteredForCategoryChart = window.globalData.filter(d =>
+                d.Year >= selectedStartYear &&
+                d.Year <= selectedEndYear &&
+                (selectedChannel === "All" || d["Sales channel"] === selectedChannel)
+            );
+            if (selectedQuarter) {
+                filteredForCategoryChart = filteredForCategoryChart.filter(d => d.QuarterStr === selectedQuarter);
+            }
+
+
+            // Redraw all components
+            drawLineChart(filteredForLine);
+            drawHeatmap(filteredForDetails);
+            drawProductBarChart(filteredForDetails);
+            drawCategoryChart(filteredForCategoryChart);
+            updateKPI(filteredForDetails);
+        }
+
+
+
+
+        // Load CSV and init dashboard
+        d3.csv("data/ecommerce_sales_data_cleaned.csv").then(data => {
+            const parseDate = d3.timeParse("%Y-%m-%d");
+            let returnCount = data.filter(d => +d.Returns !== 0).length;
+            d3.select("#returnCount").text(returnCount.toLocaleString());
+            data.forEach(d => {
+                d.Month_Year = parseDate(d.Month_Year);
+                d.Year = +d.Year;
+                d.Hour = +d.Hour;
+                d.Weekday = d.Weekday.trim();
+                d["Gross sales"] = +d["Gross sales"];
+                d["Sales channel"] = d["Sales channel"].trim();
+                d.Quarter = "Q" + (Math.floor(d.Month_Year.getMonth() / 3) + 1);
+                d.QuarterStr = `${d.Year} ${d.Quarter}`;
+            });
+
+
+            window.globalData = data;
+
+            // Setup filter defaults
+            const years = Array.from(new Set(data.map(d => d.Year))).sort();
+            const channels = [...new Set(data.map(d => d["Sales channel"]).filter(c => c !== "Draft Orders"))];
+
+            selectedStartYear = years[0];
+            selectedEndYear = years[years.length - 1];
+
+            // Channel dropdown
+            const sel = d3.select("#channelSelect");
+            channels.forEach(c => sel.append("option").attr("value", c).text(c));
+            sel.on("change", function () {
+                selectedChannel = this.value.trim();
+                updateAll();
+            });
+
+            // Brush slider
+            const svg = d3.select("#yearSlider");
+            const margin = { left: 20, right: 10 };
+            const width = +svg.attr("width") - margin.left - margin.right;
+            const x = d3.scalePoint().domain(years).range([0, width]).padding(0.5);
+            const g = svg.append("g").attr("transform", `translate(${margin.left},10)`);
+
+            g.append("g")
+                .call(d3.axisBottom(x).tickSize(0).tickFormat(d3.format("d")))
+                .attr("transform", "translate(0,20)")
+                .selectAll("text")
+                .style("font-size", "12px");
+
+            g.selectAll(".year-tick-line")
+                .data(years)
+                .enter()
+                .append("line")
+                .attr("x1", d => x(d))
+                .attr("x2", d => x(d))
+                .attr("y1", 0)
+                .attr("y2", 20)
+                .attr("stroke", "#888")
+                .attr("stroke-width", 1);
+
+            const brush = d3.brushX()
+                .extent([[0, 0], [width, 20]])
+                .handleSize(20)
+                .on("end", function (event) {
+                    if (!event.selection) return;
+
+                    const [x0, x1] = event.selection;
+                    const snappedStart = closestYear(x0);
+                    const snappedEnd = closestYear(x1);
+                    const snappedRange = [x(snappedStart), x(snappedEnd)];
+
+                    const isAlreadySnapped = Math.abs(x0 - snappedRange[0]) < 1 && Math.abs(x1 - snappedRange[1]) < 1;
+                    if (!isAlreadySnapped) {
+                        d3.select(this).transition().duration(200).call(brush.move, snappedRange);
+                        return;
+                    }
+
+                    selectedStartYear = Math.min(snappedStart, snappedEnd);
+                    selectedEndYear = Math.max(snappedStart, snappedEnd);
+                    updateAll();
+                });
+
+            function closestYear(px) {
+                return years.reduce((a, b) => Math.abs(x(b) - px) < Math.abs(x(a) - px) ? b : a);
+            }
+
+            g.append("g")
+                .attr("class", "brush")
+                .call(brush)
+                .call(brush.move, [x(years[0]), x(years[years.length - 1])]);
+
+            // Initial draw
+            updateAll();
+        });
+    </script>
+
+
+    <!-- kpi cards -->
+    <script>
+        function updateKPI(filtered) {
+            const totalSales = d3.sum(filtered, d => +d["Gross sales"]);
+            const returnCount = filtered.filter(d => +d["Returns"] !== 0).length;
+
+            const uniqueOrders = new Set(filtered.map(d => d["Order ID"])).size;
+
+            animateValue("totalSales", 0, totalSales);
+            animateValue("returnCount", 0, returnCount);
+            animateValue("orders", 0, uniqueOrders);
+        }
+
+        function animateValue(id, start, end, duration = 800) {
+            const el = document.getElementById(id);
+            const range = end - start;
+            const startTime = performance.now();
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const value = Math.floor(progress * range + start);
+                el.textContent = value.toLocaleString();
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+    </script>
+
+
+
+    <script>
+        function drawLineChart(filtered) {
+            const tooltip = d3.select("#tooltip");
+
+            const agg = d3.rollups(
+                filtered,
+                v => d3.sum(v, d => d["Gross sales"]),
+                d => d.QuarterStr
+            ).map(([q, s]) => {
+                const [year, quarter] = q.split(" ");
+                const m = (parseInt(quarter[1]) - 1) * 3;
+                return { quarter: q, date: new Date(+year, m, 1), sales: s };
+            }).sort((a, b) => a.date - b.date);
+
+            const svg = d3.select("#lineChart");
+            svg.selectAll("*").remove();
+
+            const fullWidth = svg.node().getBoundingClientRect().width;
+            const fullHeight = svg.node().getBoundingClientRect().height;
+
+            svg.attr("viewBox", `0 0 ${fullWidth} ${fullHeight}`)
+                .attr("preserveAspectRatio", "xMidYMid meet");
+
+            const margin = { top: 25, right: 30, bottom: 50, left: 70 };
+            const width = fullWidth - margin.left - margin.right;
+            const height = fullHeight - margin.top - margin.bottom;
+
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleTime()
+                .domain(d3.extent(agg, d => d.date))
+                .range([0, width]);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(agg, d => d.sales)]).nice()
+                .range([height, 0]);
+
+            const xAxis = g.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(d3.timeMonth.every(3)).tickFormat(d3.timeFormat("%Y Q%q")));
+
+            xAxis.selectAll("text")
+                .text(function (d) {
+                    const date = new Date(d);
+                    return `Q${Math.floor(date.getMonth() / 3) + 1}\n${date.getFullYear()}`;
+                })
+                .style("text-anchor", "middle")
+                .style("font-size", "8px")
+                .each(function () {
+                    const self = d3.select(this);
+                    const lines = self.text().split("\n");
+                    self.text(null);
+                    lines.forEach((line, i) => {
+                        self.append("tspan")
+                            .attr("x", 0)
+                            .attr("dy", i ? "1.2em" : "1.2em")
+                            .text(line);
+                    });
+                });
+
+
+            g.append("g")
+                .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format(",.0f")))
+                .selectAll("text")
+                .style("font-size", "8px");
+
+            g.append("text")
+                .attr("x", width / 2)
+                .attr("y", height + 40)
+                .attr("text-anchor", "middle")
+                .style("font-weight", "bold")
+                .style("font-size", "9px")
+                .text("Year");
+
+            g.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", -60)
+                .attr("x", -height / 2)
+                .attr("text-anchor", "middle")
+                .style("font-weight", "bold")
+                .style("font-size", "9px")
+                .text("Total Gross Sales (KSh)");
+
+            const path = g.append("path")
+                .datum(agg)
+                .attr("fill", "none")
+                .attr("stroke", "#260982")
+                .attr("stroke-width", 2)
+                .attr("d", d3.line()
+                    .x(d => x(d.date))
+                    .y(d => y(d.sales)));
+
+            const totalLength = path.node().getTotalLength();
+
+            path.attr("stroke-dasharray", `${totalLength} ${totalLength}`)
+                .attr("stroke-dashoffset", totalLength)
+                .transition().duration(800).ease(d3.easeCubicOut)
+                .attr("stroke-dashoffset", 0);
+
+            const circles = g.selectAll("circle")
+                .data(agg)
+                .enter()
+                .append("circle")
+                .attr("class", "quarter-circle")
+                .attr("cx", d => x(d.date))
+                .attr("cy", d => y(d.sales))
+                .attr("r", 4)
+                .attr("fill", d => d.quarter === selectedQuarter ? "#de5252" : "#ff9800")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1)
+                .style("cursor", "pointer")
+                .on("mouseover", function (event, d) {
+                    d3.select(this)
+                        .transition().duration(150)
+                        .attr("r", 8)
+                        .attr("fill", "#e68900");
+
+                    tooltip.transition().duration(200).style("opacity", 0.9);
+                    tooltip.html(`${d.quarter}<br>${d3.format(",")(d.sales)} sales`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function (event, d) {
+                    d3.select(this)
+                        .transition().duration(150)
+                        .attr("r", d.quarter === selectedQuarter ? 6 : 4)
+                        .attr("fill", d.quarter === selectedQuarter ? "#de5252" : "#ff9800");
+
+                    tooltip.transition().duration(300).style("opacity", 0);
+                })
+
+                .on("click", function (event, d) {
+                    if (selectedQuarter === d.quarter) {
+                        selectedQuarter = null;
+                    } else {
+                        selectedQuarter = d.quarter;
+                    }
+
+                    updateAll();
+
+                    d3.selectAll(".quarter-circle")
+                        .transition().duration(150)
+                        .attr("r", d => d.quarter === selectedQuarter ? 6 : 4)
+                        .attr("fill", d => d.quarter === selectedQuarter ? "#de5252" : "#ff9800");
+                })
+
+
+        }
+    </script>
+
+
+    <!-- Heatmap -->
+    <script>
+        function drawHeatmap(filtered) {
+            const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+            const hours = d3.range(24);
+            const svg = d3.select("#heatmapChart");
+            svg.selectAll("*").remove();
+
+            const containerWidth = svg.node().getBoundingClientRect().width;
+            const containerHeight = svg.node().getBoundingClientRect().height;
+
+            const margin = { top: 60, right: 30, bottom: 10, left: 80 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Rollup data
+            const grouped = d3.rollups(
+                filtered,
+                v => new Set(v.map(d => d["Order ID"])).size,
+                d => d.Weekday,
+                d => d.Hour
+            );
+
+            const flatData = [];
+            grouped.forEach(([day, hourMap]) => {
+                hourMap.forEach(([hour, count]) => {
+                    flatData.push({ day, hour, count });
+                });
+            });
+
+            const maxCount = d3.max(flatData, d => d.count);
+            const color = d3.scaleDiverging()
+                .domain([0, maxCount / 2, maxCount])
+                .interpolator(d3.interpolateRgbBasis(["#d6f2ea", "#4baac8", "#1f4f78"]));
+
+            const x = d3.scaleBand().domain(hours).range([0, width]).padding(0.05);
+            const y = d3.scaleBand().domain(weekdays).range([0, height]).padding(0.05);
+
+            // Tooltip
+            const tooltip = d3.select("#tooltip");
+
+            // Legend dimensions
+            const legendWidth = 100;
+            const legendHeight = 6;
+            const legendX = containerWidth - margin.right - legendWidth - 10;
+            const legendY = margin.top - 45;
+
+
+            // Gradient definition
+            const defs = svg.append("defs");
+            const gradient = defs.append("linearGradient")
+                .attr("id", "legend-gradient")
+                .attr("x1", "0%")
+                .attr("x2", "100%")
+                .attr("y1", "0%")
+                .attr("y2", "0%");
+
+            gradient.append("stop").attr("offset", "0%").attr("stop-color", "#d6f2ea");
+            gradient.append("stop").attr("offset", "50%").attr("stop-color", "#4baac8");
+            gradient.append("stop").attr("offset", "100%").attr("stop-color", "#1f4f78");
+
+            // Legend Title
+            svg.append("text")
+                .attr("x", legendX + legendWidth / 2)
+                .attr("y", legendY - 8)
+                .attr("text-anchor", "middle")
+                .style("font-size", "8px")
+                .style("font-weight", "bold")
+                .text("Order Number");
+
+            // Gradient bar
+            svg.append("rect")
+                .attr("x", legendX)
+                .attr("y", legendY)
+                .attr("width", legendWidth)
+                .attr("height", legendHeight)
+                .style("fill", "url(#legend-gradient)");
+
+            // Min label
+            svg.append("text")
+                .attr("x", legendX)
+                .attr("y", legendY + legendHeight + 12)
+                .attr("text-anchor", "start")
+                .style("font-size", "9px")
+                .text("0");
+
+            // Max label
+            svg.append("text")
+                .attr("x", legendX + legendWidth)
+                .attr("y", legendY + legendHeight + 12)
+                .attr("text-anchor", "end")
+                .style("font-size", "9px")
+                .text(maxCount);
+
+            // X Axis Label
+            svg.append("text")
+                .attr("x", margin.left + width / 2 - 18)
+                .attr("y", containerHeight - 150)
+                .attr("text-anchor", "middle")
+                .style("fill", "black")
+                .style("font-size", "12px")
+                .style("font-weight", "bold")
+                .text("Hours");
+
+
+            // Draw cells
+            g.selectAll("rect")
+                .data(flatData, d => `${d.day}-${d.hour}`)
+                .enter()
+                .append("rect")
+                .attr("x", d => x(d.hour))
+                .attr("y", d => y(d.day))
+                .attr("width", x.bandwidth())
+                .attr("height", y.bandwidth())
+                .attr("rx", 4)
+                .attr("ry", 4)
+                .attr("fill", d => d.count === 0 ? "#f0f0f0" : color(d.count))
+                .attr("stroke", "#fff")
+                .style("cursor", d => d.count === 0 ? "default" : "pointer")
+                .on("mouseover", function (event, d) {
+                    if (d.count === 0) return;
+                    tooltip.transition().duration(200).style("opacity", 0.9);
+                    tooltip.html(
+                        `Day: ${d.day}<br>Hour: ${d.hour}:00<br>Orders: ${d.count}`
+                    )
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 20) + "px");
+                })
+                .on("mouseout", () => {
+                    tooltip.transition().duration(300).style("opacity", 0);
+                });
+
+            // Axes
+            g.append("g")
+                .attr("class", "x-axis")
+                .attr("transform", `translate(0,0)`)
+                .call(d3.axisTop(x).tickFormat(d => d + ":00").tickValues([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22]));
+
+
+
+            g.append("g")
+                .attr("class", "y-axis")
+                .call(d3.axisLeft(y));
+
+
+        }
+    </script>
+
+    <script>
+        function drawProductBarChart(filtered) {
+            const tooltip = d3.select("#tooltip");
+
+            const productSales = d3.rollups(
+                filtered,
+                v => d3.sum(v, d => d['Gross sales']),
+                d => d.Product
+            );
+
+            const topProducts = productSales
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([product, gross_sales]) => ({ product, gross_sales }))
+
+            const svg = d3.select("#productBarChart");
+            svg.selectAll("*").remove();
+
+            const fullWidth = svg.node().getBoundingClientRect().width || 500;
+            const fullHeight = svg.node().getBoundingClientRect().height || 240;
+
+            const margin = { top: 1, right: 12, bottom: 35, left: 170 };
+            const width = fullWidth - margin.left - margin.right;
+            const height = fullHeight - margin.top - margin.bottom;
+
+            if (width <= 0 || height <= 0 || topProducts.length === 0) return;
+
+            const y = d3.scaleBand()
+                .domain(topProducts.map(d => d.product))
+                .range([0, height])
+                .padding(0.4);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(topProducts, d => d.gross_sales)])
+                .nice()
+                .range([0, width]);
+
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+
+            // Bars
+            g.selectAll("rect")
+                .data(topProducts)
+                .enter()
+                .append("rect")
+                .attr("x", 0)
+                .attr("y", d => y(d.product))
+                .attr("width", d => x(d.gross_sales))
+                .attr("height", y.bandwidth())
+                .attr("fill", "#8899cc")
+                .attr("width", 0)
+                .attr("opacity", 0)
+                .on("mouseover", function (event, d) {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`${d.product}<br>Sales: ${d3.format(",")(d.gross_sales)}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+
+                    d3.select(this)
+                        .attr("stroke", "black")
+                        .attr("stroke-width", 1);
+                })
+
+                .on("mouseout", function () {
+                    tooltip.transition().duration(300).style("opacity", 0);
+                    d3.select(this).attr("stroke", null).attr("stroke-width", null);
+                })
+                .transition()
+                .delay((d, i) => i * 80)
+                .duration(400)
+                .ease(d3.easeCubicOut)
+                .attr("width", d => x(d.gross_sales))
+                .attr("opacity", 1);
+
+            // X Axis
+            g.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(10).tickFormat(d => `${(d / 1_000_000).toFixed(2)}M`))
+                .selectAll("text")
+                .style("font-size", "9px");
+
+            g.append("text")
+                .attr("text-anchor", "middle")
+                .attr("x", width / 2)
+                .attr("y", height + 30)
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .text("Total Gross Sales (KSh)");
+
+            const yAxis = g.append("g")
+                .call(d3.axisLeft(y).tickSize(6));
+
+            yAxis.selectAll(".tick text")
+                .each(function (d) {
+                    const self = d3.select(this);
+                    const words = d.split(/\s+/);
+                    const maxWidth = 160;
+                    let line = [];
+                    let lines = [];
+
+                    const testText = svg.append("text").style("visibility", "hidden").style("font-size", "8px");
+
+                    words.forEach(word => {
+                        line.push(word);
+                        testText.text(line.join(" "));
+                        if (testText.node().getComputedTextLength() > maxWidth) {
+                            line.pop();
+                            lines.push(line.join(" "));
+                            line = [word];
+                        }
+                    });
+
+                    if (line.length) lines.push(line.join(" "));
+                    testText.remove();
+
+                    self.text(null);
+
+                    const lineHeightEm = 1.1;
+                    const totalLines = lines.length;
+
+                    lines.forEach((lineText, i) => {
+                        self.append("tspan")
+                            .text(lineText)
+                            .attr("x", -9)
+                            .attr("dy", () => {
+                                if (totalLines === 1) {
+                                    return "0.32em";
+                                } else {
+                                    return i === 0
+                                        ? `${-((totalLines - 1) / 2) * lineHeightEm}em`
+                                        : `${lineHeightEm}em`;
+                                }
+                            });
+                    });
+
+                })
+                .style("font-size", "8px");
+
+        }
+    </script>
+
+
+    <!-- category barchart -->
+    <script>
+
+        function drawCategoryChart(filtered) {
+            const tooltip = d3.select("#tooltip");
+
+            const grossSalesByCategory = Array.from(
+                d3.rollup(
+                    filtered,
+                    v => d3.sum(v, d => d["Gross sales"]),
+                    d => d["Product Category"]
+                ),
+                ([key, value]) => ({ category: key, sales: value })
+            );
+
+            const top10 = grossSalesByCategory
+                .sort((a, b) => d3.descending(a.sales, b.sales))
+                .slice(0, 10);
+
+            const svg = d3.select("#categoryChart");
+            svg.selectAll("*").remove();
+
+            const containerWidth = svg.node().getBoundingClientRect().width;
+            const containerHeight = svg.node().getBoundingClientRect().height;
+
+            const margin = { top: 20, right: 35, bottom: 60, left: 105 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const y = d3.scaleBand()
+                .domain(top10.map(d => d.category))
+                .range([0, height])
+                .padding(0.2);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(top10, d => d.sales)]).nice()
+                .range([0, width + 20]);
+
+
+            //bars
+            g.selectAll("rect")
+                .data(top10)
+                .enter()
+                .append("rect")
+                .attr("y", d => y(d.category))
+                .attr("x", 0)
+                .attr("height", y.bandwidth())
+                .attr("width", d => x(d.sales))
+                .attr("fill", "#8899cc")
+                .attr("width", 0) // Start from 0 width
+                .attr("opacity", 0) // Start fully transparent
+                .attr("stroke-width", d => d.category === selectedCategory ? 2 : 0)
+                .attr("stroke", "black")
+                .style("cursor", "pointer")
+                .style("opacity", d => selectedCategory && d.category !== selectedCategory ? 0.3 : 1)
+                .on("mouseover", function (event, d) {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`${d.category}<br/>Sales: ${d3.format(",")(d.sales)}`)
+                        .style("left", (event.pageX + 12) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+
+                    // Add hover border if not selected
+                    if (selectedCategory !== d.category) {
+                        d3.select(this).attr("stroke-width", 1);
+                    }
+                })
+                .on("mouseout", function (event, d) {
+                    tooltip.transition().duration(300).style("opacity", 0);
+
+                    // Remove hover border if not selected
+                    if (selectedCategory !== d.category) {
+                        d3.select(this).attr("stroke-width", 0);
+                    }
+                })
+
+                .on("click", function (event, d) {
+                    if (selectedCategory === d.category) {
+                        selectedCategory = null;
+                    } else {
+                        selectedCategory = d.category;
+                    }
+
+                    updateAll();
+
+                    // Repaint all bars
+                    g.selectAll("rect")
+                        .attr("stroke-width", b => b.category === selectedCategory ? 2 : 0)
+                        .style("opacity", b => selectedCategory && b.category !== selectedCategory ? 0.3 : 1);
+                })
+                .transition()
+                .duration(500)
+                .attr("width", d => x(d.sales));
+
+            // Y Axis (Category)
+            g.append("g")
+                .call(d3.axisLeft(y))
+                .selectAll("text")
+                .style("fill", "black")
+                .style("font-size", "9px");
+
+            // X Axis (Sales)
+            g.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(10).tickFormat(d => `${(d / 1_000_000).toFixed(2)}M`))
+                .selectAll("text")
+                .style("fill", "black")
+                .style("font-size", "9px");
+
+            // X Axis Label
+            svg.append("text")
+                .attr("x", margin.left + width / 2)
+                .attr("y", containerHeight - 25)
+                .attr("text-anchor", "middle")
+                .style("fill", "black")
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .text("Total Gross Sales (KSh)");
+
+            // Y Axis Label
+            svg.append("text")
+                .attr("x", 60)
+                .attr("y", margin.top - 10)
+                .attr("text-anchor", "start")
+                .style("fill", "black")
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .text("Product Category");
+        }
+
+
+        d3.select("#channelSelect").on("change", function () {
+            selectedChannel = this.value.trim();
+            updateAll();
+        });
+
+    </script>
+
+    <div id="categoryModal" style="display: none; position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh; background: rgba(0,0,0,0.6);
+            z-index: 2000; justify-content: center; align-items: center;">
+
+        <div style="background: white; margin: 5% auto; padding: 20px;
+                width: 80%; height: 80%; position: relative; box-sizing: border-box;">
+
+            <span onclick="closeCategoryZoom()" style="position: absolute; top: 10px; right: 20px;
+                     cursor: pointer; font-size: 20px;">&times;</span>
+
+            <svg id="categoryChartZoom" width="100%" height="100%"></svg>
+        </div>
+    </div>
+
+
+    <script>
+
+        function openCategoryZoom() {
+            document.getElementById('categoryModal').style.display = 'flex';
+
+            setTimeout(() => {
+                const filtered = window.globalData.filter(d => {
+                    return (
+                        d.Year >= selectedStartYear &&
+                        d.Year <= selectedEndYear &&
+                        (selectedChannel === "All" || d["Sales channel"] === selectedChannel) &&
+                        (!selectedQuarter || d.QuarterStr === selectedQuarter)
+                    );
+                });
+                drawCategoryChartZoom(filtered);
+            }, 10);
+        }
+
+
+
+        function closeCategoryZoom() {
+            document.getElementById('categoryModal').style.display = 'none';
+        }
+
+        function drawCategoryChartZoom(filtered) {
+            const tooltip = d3.select("#tooltip");
+
+            const grossSalesByCategory = Array.from(
+                d3.rollup(
+                    filtered,
+                    v => d3.sum(v, d => d["Gross sales"]),
+                    d => d["Product Category"]
+                ),
+                ([key, value]) => ({ category: key, sales: value })
+            );
+
+            const top10 = grossSalesByCategory
+                .sort((a, b) => d3.descending(a.sales, b.sales))
+                .slice(0, 10);
+
+            const svg = d3.select("#categoryChartZoom");
+            svg.selectAll("*").remove();
+
+            const containerWidth = svg.node().getBoundingClientRect().width || 600;
+            const containerHeight = svg.node().getBoundingClientRect().height || 400;
+
+            svg
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+                .attr("preserveAspectRatio", "xMidYMid meet");
+
+
+            const margin = { top: 40, right: 30, bottom: 40, left: 105 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const y = d3.scaleBand()
+                .domain(top10.map(d => d.category))
+                .range([0, height])
+                .padding(0.2);
+
+            const x = d3.scaleLinear()
+                .domain([0, d3.max(top10, d => d.sales)]).nice()
+                .range([0, width + 20]);
+
+
+            g.selectAll("rect")
+                .data(top10)
+                .enter()
+                .append("rect")
+                .attr("y", d => y(d.category))
+                .attr("x", 0)
+                .attr("height", y.bandwidth())
+                .attr("width", d => x(d.sales))
+                .attr("fill", "#8899cc")
+                .attr("stroke-width", d => d.category === selectedCategory ? 2 : 0)
+                .attr("stroke", "black")
+                .style("cursor", "pointer")
+                .style("opacity", d => selectedCategory && d.category !== selectedCategory ? 0.3 : 1)
+                .on("mouseover", function (event, d) {
+                    tooltip.transition().duration(200).style("opacity", 1);
+                    tooltip.html(`${d.category}<br/>Sales: ${d3.format(",")(d.sales)}`)
+                        .style("left", (event.pageX + 12) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+
+                    // Add hover border if not selected
+                    if (selectedCategory !== d.category) {
+                        d3.select(this).attr("stroke-width", 1);
+                    }
+                })
+                .on("mouseout", function (event, d) {
+                    tooltip.transition().duration(300).style("opacity", 0);
+
+                    // Remove hover border if not selected
+                    if (selectedCategory !== d.category) {
+                        d3.select(this).attr("stroke-width", 0);
+                    }
+                })
+                .on("click", function (event, d) {
+                    if (selectedCategory === d.category) {
+                        selectedCategory = null;
+                    } else {
+                        selectedCategory = d.category;
+                    }
+
+                    updateAll();
+
+                    // Repaint all bars
+                    g.selectAll("rect")
+                        .attr("stroke-width", b => b.category === selectedCategory ? 2 : 0)
+                        .style("opacity", b => selectedCategory && b.category !== selectedCategory ? 0.3 : 1);
+                });
+
+            // Y Axis (Category)
+            g.append("g")
+                .call(d3.axisLeft(y))
+                .selectAll("text")
+                .style("fill", "black")
+                .style("font-size", "9px");
+
+
+            // X Axis (Sales)
+            g.append("g")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(10).tickFormat(d => `${(d / 1_000_000).toFixed(2)}M`))
+                .selectAll("text")
+                .style("fill", "black")
+                .style("font-size", "9px");
+
+            // X Axis Label
+            svg.append("text")
+                .attr("x", margin.left + width / 2)
+                .attr("y", containerHeight - 10)
+                .attr("text-anchor", "middle")
+                .style("fill", "black")
+                .style("font-size", "10px")
+                .style("font-weight", "bold")
+                .text("Total Gross Sales (KSh)");
+
+            // Y Axis Label
+            svg.append("text")
+                .attr("x", 15)
+                .attr("y", margin.top - 20)
+                .attr("text-anchor", "start")
+                .style("fill", "black")
+                .style("font-size", "12px")
+                .text("Product Category");
+        }
+
+
+        d3.select("#channelSelect").on("change", function () {
+            selectedChannel = this.value.trim();
+            updateAll();
+        })
+
+    </script>
+
+
+
+
+</body>
+
+</html>
